@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FiberOptix GIS - Telecom Network Planner</title>
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  
+  <!-- Custom Glassmorphic CSS Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       LOGIN & AUTHENTICATION MODAL
+       ========================================== -->
+  <div id="auth-modal" class="auth-overlay">
+    <div class="auth-container glass-card">
+      <div class="auth-header">
+        <i class="fa-solid fa-network-wired logo-glow"></i>
+        <h2>FiberOptix GIS</h2>
+        <p>Telecom Network Planning Portal</p>
+      </div>
+      
+      <!-- Login Form -->
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-username"><i class="fa-solid fa-user"></i> Username or Email</label>
+          <input type="text" id="login-username" placeholder="Enter planner username" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password"><i class="fa-solid fa-lock"></i> Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Log In</button>
+        <p class="auth-switch">Forgot your password? <a href="#" id="show-forgot">Reset it</a></p>
+        <p class="auth-switch">Don't have an account? <a href="#" id="show-register">Register here</a></p>
+      </form>
+      <!-- Forgot Password Form -->
+      <form id="forgot-form" style="display:none;">
+        <div class="form-group">
+          <label for="forgot-email"><i class="fa-solid fa-envelope"></i> Email Address</label>
+          <input type="email" id="forgot-email" placeholder="Enter your email" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Send Reset Link</button>
+        <p class="auth-switch"><a href="#" id="back-to-login-from-forgot">Back to Log In</a></p>
+      </form>
+      
+      <!-- Register Form -->
+      <form id="register-form" style="display: none;">
+        <div class="form-group">
+          <label for="reg-username"><i class="fa-solid fa-user"></i> Username</label>
+          <input type="text" id="reg-username" placeholder="planner1" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-email"><i class="fa-solid fa-envelope"></i> Email Address</label>
+          <input type="email" id="reg-email" placeholder="planner@company.com" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-password"><i class="fa-solid fa-lock"></i> Password</label>
+          <input type="password" id="reg-password" placeholder="Min 6 characters" required>
+        </div>
+        <button type="submit" class="btn btn-accent btn-block">Create Planner Account</button>
+        <p class="auth-switch">Already registered? <a href="#" id="show-login">Log in here</a></p>
+      </form>
+
+      <div class="auth-note">
+        <p><i class="fa-solid fa-circle-info"></i> Note: For new database instances, registering your account will automatically seed it to the PostgreSQL + PostGIS platform.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MAIN DASHBOARD CONTAINER
+       ========================================== -->
+  <div id="dashboard" class="dashboard-layout" style="display: none;">
+    
+    <!-- HEADER BAR -->
+    <header class="main-header glass-header">
+      <div class="header-brand">
+        <i class="fa-solid fa-network-wired brand-icon"></i>
+        <h1>FiberOptix GIS <span>Telecom Planning &amp; Design</span></h1>
+      </div>
+      <div class="header-actions">
+        <div class="user-profile">
+          <i class="fa-solid fa-user-circle"></i>
+          <span id="user-display">Planner</span>
+        </div>
+        <button id="theme-toggle-btn" class="btn btn-secondary btn-icon" title="Toggle Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+        <button id="logout-btn" class="btn btn-danger btn-icon" title="Log Out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT WRAPPER -->
+    <div class="content-wrapper">
+      
+      <!-- ==========================================
+           LEFT SIDEBAR (Controls, Trace, Layers)
+           ========================================== -->
+      <aside class="sidebar-left glass-sidebar">
+        
+        <!-- Search Section -->
+        <section class="sidebar-section search-section">
+          <h3><i class="fa-solid fa-magnifying-glass"></i> Search Assets</h3>
+          <div class="search-box">
+            <input type="text" id="search-input" placeholder="Search by ID, Name or Type...">
+            <button id="search-clear" style="display: none;"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div id="search-results" class="search-results-list" style="display: none;"></div>
+        </section>
+
+        <!-- Layer Management -->
+        <section class="sidebar-section layer-section">
+          <h3><i class="fa-solid fa-layer-group"></i> Layer Management</h3>
+          <div class="layer-list">
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-olt" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-server color-olt"></i> OLTs (Central Office)</span>
+            </div>
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-cabinet" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-box-archive color-cabinet"></i> Cabinets (FDH)</span>
+            </div>
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-joint" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-circle-nodes color-joint"></i> Joint Closures</span>
+            </div>
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-splitter" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-code-branch color-splitter"></i> Splitters</span>
+            </div>
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-pole" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-map-pin color-pole"></i> Poles / Manholes</span>
+            </div>
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-customer" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-house-signal color-customer"></i> Customer Premises</span>
+            </div>
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-fiber" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-route color-fiber"></i> Fiber Cables</span>
+            </div>
+            <div class="layer-item">
+              <label class="toggle-switch">
+                <input type="checkbox" id="layer-duct" checked>
+                <span class="slider"></span>
+              </label>
+              <span class="layer-name"><i class="fa-solid fa-grip-lines color-duct"></i> Duct Routes</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Asset Drawing Toolbar -->
+        <section class="sidebar-section draw-section">
+          <h3><i class="fa-solid fa-pen-ruler"></i> Editing Toolbar</h3>
+          <div class="draw-toolbar">
+            <button id="draw-point-btn" class="btn btn-tool" title="Draw Point Asset">
+              <i class="fa-solid fa-location-crosshairs"></i> Add Node
+            </button>
+            <button id="draw-line-btn" class="btn btn-tool" title="Draw Line Asset">
+              <i class="fa-solid fa-bezier-curve"></i> Add Cable
+            </button>
+          </div>
+          
+          <div id="draw-control-panel" class="draw-controls" style="display: none;">
+            <p id="draw-instruction">Select type and click on map</p>
+            <div class="form-group">
+              <label for="draw-subtype">Sub-Type:</label>
+              <select id="draw-subtype" class="input-select">
+                <!-- Will load dynamically based on Point or Line selection -->
+              </select>
+            </div>
+            <div class="form-group snip-config">
+              <label class="checkbox-label">
+                <input type="checkbox" id="snap-enabled" checked> Enable Vertex Snapping
+              </label>
+            </div>
+            <div class="draw-actions">
+              <button id="draw-cancel-btn" class="btn btn-small btn-danger">Cancel</button>
+              <button id="draw-save-btn" class="btn btn-small btn-success" disabled>Save</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tracing Controls -->
+        <section class="sidebar-section trace-section">
+          <h3><i class="fa-solid fa-bolt"></i> Trace &amp; Network Analysis</h3>
+          <div class="form-group">
+            <label for="trace-type-select">Trace Action:</label>
+            <select id="trace-type-select" class="input-select">
+              <option value="upstream">Upstream Trace (To OLT)</option>
+              <option value="downstream">Downstream Trace (To Customers)</option>
+              <option value="full">Full Network Trace</option>
+              <option value="shortest">Shortest Path Analysis</option>
+              <option value="impact">Service Impact Simulation</option>
+            </select>
+          </div>
+          
+          <!-- Contextual trigger targets -->
+          <div id="trace-trigger-box" class="trace-prompt">
+            <p id="trace-guide-text">Select an asset on the map and click "Run Trace" below.</p>
+            
+            <!-- Path finder inputs -->
+            <div id="shortest-path-inputs" style="display: none;">
+              <div class="form-group">
+                <label>Start Node ID:</label>
+                <input type="text" id="shortest-start-id" placeholder="Click start node" readonly>
+              </div>
+              <div class="form-group">
+                <label>End Node ID:</label>
+                <input type="text" id="shortest-end-id" placeholder="Click end node" readonly>
+              </div>
+            </div>
+          </div>
+          
+          <button id="run-trace-btn" class="btn btn-primary btn-block"><i class="fa-solid fa-play"></i> Run Analysis</button>
+          <button id="clear-trace-btn" class="btn btn-secondary btn-block" style="display: none;"><i class="fa-solid fa-eraser"></i> Clear Trace</button>
+        </section>
+
+        <!-- Import / Export Section -->
+        <section class="sidebar-section file-section">
+          <h3><i class="fa-solid fa-file-invoice-dollar"></i> Import &amp; Export</h3>
+          <div class="file-buttons">
+            <button id="export-geojson-btn" class="btn btn-small btn-secondary" title="Export GeoJSON"><i class="fa-solid fa-file-export"></i> GeoJSON</button>
+            <button id="export-kml-btn" class="btn btn-small btn-secondary" title="Export KML"><i class="fa-solid fa-earth-americas"></i> KML</button>
+            <button id="export-csv-btn" class="btn btn-small btn-secondary" title="Export CSV"><i class="fa-solid fa-file-csv"></i> CSV</button>
+          </div>
+          <div class="import-zone">
+            <label for="import-file-input" class="import-label">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Click to Upload Data
+            </label>
+            <input type="file" id="import-file-input" accept=".geojson,.json,.kml,.csv" style="display: none;">
+            <p class="import-note">Supports .geojson, .kml, .csv</p>
+          </div>
+        </section>
+
+      </aside>
+
+      <!-- ==========================================
+           MAIN CONTENT AREA (MAP & BOTTOM CONSOLE)
+           ========================================== -->
+      <main class="main-map-container">
+        
+        <!-- Interactive Leaflet Map -->
+        <div id="map"></div>
+        
+        <!-- Dynamic Map Controls (Basemaps & Coordinate indicators) -->
+        <div class="map-overlay-controls">
+          <div class="basemap-selector glass-card">
+            <button class="basemap-btn active" data-basemap="osm">OSM</button>
+            <button class="basemap-btn" data-basemap="satellite">Satellite</button>
+            <button class="basemap-btn" data-basemap="terrain">Terrain</button>
+          </div>
+          <div class="coordinates-display glass-card">
+            <span id="coordinate-text">Lat: --, Lng: --</span>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             BOTTOM PANEL (Event logs, Audit Trail)
+             ========================================== -->
+        <footer id="bottom-panel" class="bottom-panel glass-panel">
+          <div class="panel-tabs">
+            <button class="panel-tab-btn active" data-tab="logs-tab">Console Logs</button>
+            <button class="panel-tab-btn" data-tab="history-tab">Operation History</button>
+            <button class="panel-tab-btn" data-tab="utilization-tab">Fiber Utilization</button>
+            <div class="panel-controls">
+              <button id="undo-btn" class="btn btn-small btn-secondary" title="Undo Last Editing Action">
+                <i class="fa-solid fa-rotate-left"></i> Undo
+              </button>
+              <button id="panel-toggle-btn" class="btn btn-small btn-secondary" title="Toggle Console">
+                <i class="fa-solid fa-chevron-down"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="panel-content-area">
+            <!-- Logs console -->
+            <div id="logs-tab" class="panel-tab-content active scrollable">
+              <div id="console-logs-list" class="console-list font-mono">
+                <div class="log-row info">[System] FiberOptix GIS initializing... Loaded dual sidebars, drawing snapping vectors, and routing parameters.</div>
+              </div>
+            </div>
+            
+            <!-- History list -->
+            <div id="history-tab" class="panel-tab-content scrollable">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>ID</th>
+                  </tr>
+                </thead>
+                <tbody id="history-rows">
+                  <tr>
+                    <td colspan="5" class="empty-state">Loading operation logs...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Utilization metrics -->
+            <div id="utilization-tab" class="panel-tab-content scrollable">
+              <div id="utilization-grid" class="metrics-grid">
+                <div class="metric-card">
+                  <h4>No Active Cables</h4>
+                  <p>Create cable assets to display fiber core utilization charts.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </footer>
+
+      </main>
+
+      <!-- ==========================================
+           RIGHT SIDEBAR (Asset properties & Connections)
+           ========================================== -->
+      <aside class="sidebar-right glass-sidebar">
+        
+        <!-- Header Info -->
+        <div class="sidebar-section-header">
+          <h3><i class="fa-solid fa-circle-info"></i> Selected Feature</h3>
+        </div>
+
+        <div id="no-feature-selected" class="empty-selection">
+          <i class="fa-solid fa-hand-pointer animate-pulse"></i>
+          <p>Click on any asset or route segment to view and edit its details.</p>
+        </div>
+
+        <!-- Attribute Editor Form -->
+        <div id="feature-details-container" style="display: none;">
+          
+          <section class="sidebar-section attr-editor-section">
+            <h4 class="section-title">Properties Editor</h4>
+            <form id="attribute-form">
+              <input type="hidden" id="attr-id">
+              <input type="hidden" id="attr-layer-type"> <!-- 'asset' or 'route' -->
+              
+              <div class="form-group">
+                <label for="attr-name">Asset Name:</label>
+                <input type="text" id="attr-name" class="input-text" required>
+              </div>
+              <div class="form-group">
+                <label for="attr-type">Asset Type:</label>
+                <input type="text" id="attr-type" class="input-text" readonly>
+              </div>
+              <div class="form-group">
+                <label for="attr-status">Operational Status:</label>
+                <select id="attr-status" class="input-select">
+                  <option value="Planned">Planned</option>
+                  <option value="Under Construction">Under Construction</option>
+                  <option value="Active">Active</option>
+                  <option value="Maintenance">Maintenance</option>
+                  <option value="Retired">Retired</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="attr-owner">Owner:</label>
+                <input type="text" id="attr-owner" class="input-text">
+              </div>
+              <div class="form-group" id="route-length-group" style="display: none;">
+                <label>Route Length (Meters):</label>
+                <input type="text" id="attr-length" class="input-text" readonly>
+              </div>
+              <div class="form-group">
+                <label for="attr-remarks">Planner Remarks:</label>
+                <textarea id="attr-remarks" class="input-textarea" rows="2"></textarea>
+              </div>
+
+              <!-- Dynamic Sub-type attributes (Rendered based on asset type) -->
+              <div id="dynamic-attributes-box"></div>
+
+              <div class="editor-actions">
+                <button type="button" id="delete-feature-btn" class="btn btn-danger"><i class="fa-solid fa-trash-can"></i> Delete</button>
+                <button type="submit" id="save-attributes-btn" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Connectivity splicing and linking interface -->
+          <section id="connectivity-section" class="sidebar-section connectivity-section">
+            <h4 class="section-title">Connectivity Topology</h4>
+            
+            <div id="topology-list" class="connectivity-links-box">
+              <!-- Render links dynamically -->
+            </div>
+
+            <div class="link-builder-box">
+              <h5>Establish Splicing Link</h5>
+              <div class="form-group">
+                <label for="link-target-select">Link Target:</label>
+                <select id="link-target-select" class="input-select">
+                  <option value="">-- Choose asset from map --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="link-route-select">Associated Cable (optional):</label>
+                <select id="link-route-select" class="input-select">
+                  <option value="">-- Direct Splice / Unmapped --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="link-type-select">Splicing Type:</label>
+                <select id="link-type-select" class="input-select">
+                  <option value="olt-cabinet">OLT to Cabinet Link</option>
+                  <option value="cabinet-joint">Cabinet to Joint Splice</option>
+                  <option value="joint-splitter">Joint Closure to Splitter</option>
+                  <option value="splitter-customer">Splitter to Customer ONT</option>
+                  <option value="joint-joint">Closure to Closure Splice</option>
+                </select>
+              </div>
+              <button id="add-link-btn" class="btn btn-accent btn-block"><i class="fa-solid fa-plus"></i> Splice Assets</button>
+            </div>
+          </section>
+
+          <!-- Advanced line operations -->
+          <section id="line-operations-section" class="sidebar-section line-ops" style="display: none;">
+            <h4 class="section-title">Cable Modifications</h4>
+            <div class="ops-buttons">
+              <button id="split-line-btn" class="btn btn-secondary btn-block"><i class="fa-solid fa-scissors"></i> Split Cable Segment</button>
+              <button id="merge-line-btn" class="btn btn-secondary btn-block"><i class="fa-solid fa-object-group"></i> Merge with Cable...</button>
+            </div>
+            <p class="ops-note">Splitting requires placing a point on the line segment. Merging combines two touching segments in a single transaction.</p>
+          </section>
+        </div>
+
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- Leaflet Javascript -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Turf.js for client-side spatial calculations (snapping and distances) -->
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+  <!-- Application scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/draw.js"></script>
+  <script src="js/trace.js"></script>
+  <script src="js/import-export.js"></script>
+  <script src="js/ui.js"></script>
+  
+</body>
+</html>
