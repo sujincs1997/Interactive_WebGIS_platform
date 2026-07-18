@@ -1,3 +1,5 @@
+
+
 # 🌍 Interactive WebGIS Platform
 
 An interactive web-based GIS platform built using **Leaflet**, designed for telecom network planning, spatial data management, and GIS operations. The platform provides powerful map editing, feature management, spatial analysis, and visualization capabilities through an intuitive web interface.
@@ -167,3 +169,4 @@ Repository: Interactive WebGIS Platform
 ⭐ If you find this project useful, please give it a star on GitHub!
 
 If you share the actual project files (`package.json`, folder structure, technologies used
+<img width="1232" height="605" alt="image" src="https://github.com/user-attachments/assets/2cb3d9c1-288d-45f5-9aa6-44f0378e5ff8" />
